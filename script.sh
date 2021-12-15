@@ -1,105 +1,148 @@
 #!/usr/bin/env bash
-# ----------------------------- VARIÁVEIS ----------------------------- #
-PPA_LIBRATBAG="ppa:libratbag-piper/piper-libratbag-git"
-PPA_LUTRIS="ppa:lutris-team/lutris"
-PPA_GRAPHICS_DRIVERS="ppa:graphics-drivers/ppa"
+# ----------------------------- VARIABLES ----------------------------- #
+TEMP_PROGRAMS_DIRECTORY="$HOME/temp_programs" # temporary folder to save .deb files
+UBUNTU_VERSION=$(lsb_release -c | grep -oE "[^:]*$") # get version codename: focal, eoan...
 
-URL_WINE_KEY="https://dl.winehq.org/wine-builds/winehq.key"
-URL_PPA_WINE="https://dl.winehq.org/wine-builds/ubuntu/"
-URL_GOOGLE_CHROME="https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
-URL_SIMPLE_NOTE="https://github.com/Automattic/simplenote-electron/releases/download/v1.8.0/Simplenote-linux-1.8.0-amd64.deb"
-URL_4K_VIDEO_DOWNLOADER="https://dl.4kdownload.com/app/4kvideodownloader_4.9.2-1_amd64.deb"
-URL_INSYNC="https://d2t3ff60b2tol4.cloudfront.net/builds/insync_3.0.20.40428-bionic_amd64.deb"
+# .deb list
+URL_DEB_FILES=(
+  https://zoom.us/client/latest/zoom_amd64.deb
+  https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+  https://updates.insomnia.rest/downloads/ubuntu/latest
+)
 
-DIRETORIO_DOWNLOADS="$HOME/Downloads/programas"
+# apt list
+PROGRAMS_VIA_APT=(
+  apt-transport-https
+  build-essential
+  slack-desktop
+  nodejs 
+  nodejs-doc 
+  zsh
+  net-tools
+  unrar
+  unzip
+  gparted
+  gnome-tweak-tool
+  git
+  gimp
+  youtube-dl
+  docker-ce 
+  docker-ce-cli 
+)
 
-PROGRAMAS_PARA_INSTALAR=(
-  snapd
-  mint-meta-codecs
-  winff
-  guvcview
-  virtualbox
-  flameshot
-  nemo-dropbox
-  steam-installer
-  steam-devices
-  steam:i386
-  ratbagd
-  piper
-  lutris
-  libvulkan1
-  libvulkan1:i386
-  libgnutls30:i386
-  libldap-2.4-2:i386
-  libgpg-error0:i386
-  libxml2:i386
-  libasound2-plugins:i386
-  libsdl2-2.0-0:i386
-  libfreetype6:i386
-  libdbus-1-3:i386
-  libsqlite3-0:i386
+# snap list
+PROGRAMS_VIA_SNAP=(
+  "code --classic"
+  "spotify"
+  "postman"
 )
 # ---------------------------------------------------------------------- #
 
-# ----------------------------- REQUISITOS ----------------------------- #
-## Removendo travas eventuais do apt ##
+
+# ----------------------------- PRE INSTALL STEP ----------------------------- #
+echo "==== Removendo travas eventuais do apt ===="
 sudo rm /var/lib/dpkg/lock-frontend
 sudo rm /var/cache/apt/archives/lock
 
-## Adicionando/Confirmando arquitetura de 32 bits ##
+echo "==== Adicionando/Confirmando arquitetura de 32 bits ====" 
 sudo dpkg --add-architecture i386
 
-## Atualizando o repositório ##
+echo "==== Atualizando o repositório ===="
 sudo apt update -y
 
-## Adicionando repositórios de terceiros e suporte a Snap (Driver Logitech, Lutris e Drivers Nvidia)##
-sudo apt-add-repository "$PPA_LIBRATBAG" -y
-sudo add-apt-repository "$PPA_LUTRIS" -y
-sudo apt-add-repository "$PPA_GRAPHICS_DRIVERS" -y
-wget -nc "$URL_WINE_KEY"
-sudo apt-key add winehq.key
-sudo apt-add-repository "deb $URL_PPA_WINE bionic main"
-# ---------------------------------------------------------------------- #
-
-# ----------------------------- EXECUÇÃO ----------------------------- #
-## Atualizando o repositório depois da adição de novos repositórios ##
-sudo apt update -y
-
-## Download e instalaçao de programas externos ##
-mkdir "$DIRETORIO_DOWNLOADS"
-wget -c "$URL_GOOGLE_CHROME"       -P "$DIRETORIO_DOWNLOADS"
-wget -c "$URL_SIMPLE_NOTE"         -P "$DIRETORIO_DOWNLOADS"
-wget -c "$URL_4K_VIDEO_DOWNLOADER" -P "$DIRETORIO_DOWNLOADS"
-wget -c "$URL_INSYNC"              -P "$DIRETORIO_DOWNLOADS"
-
-## Instalando pacotes .deb baixados na sessão anterior ##
-sudo dpkg -i $DIRETORIO_DOWNLOADS/*.deb
-
-# Instalar programas no apt
-for nome_do_programa in ${PROGRAMAS_PARA_INSTALAR[@]}; do
-  if ! dpkg -l | grep -q $nome_do_programa; then # Só instala se já não estiver instalado
-    apt install "$nome_do_programa" -y
-  else
-    echo "[INSTALADO] - $nome_do_programa"
-  fi
+echo "==== Adicionando repositórios PPA ===="
+sudo apt install software-properties-common -y
+for ppa_address in ${PPA_ADDRESSES[@]}; do
+    sudo add-apt-repository "$ppa_address" -y
 done
 
-sudo apt install --install-recommends winehq-stable wine-stable wine-stable-i386 wine-stable-amd64 -y
 
-## Instalando pacotes Flatpak ##
-flatpak install flathub com.obsproject.Studio -y
+echo "==== Configura repositório docker e docker-compose ===="
+sudo apt-get remove docker docker-engine docker.io containerd runc -y
+echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $UBUNTU_VERSION stable" | sudo tee /etc/apt/sources.list.d/docker-release.list
+wget --quiet -O - https://download.docker.com/linux/ubuntu/gpg | sudo apt-key --keyring /etc/apt/trusted.gpg.d/docker-release.gpg add -
+sudo wget -c "https://github.com/docker/compose/releases/download/1.25.5/docker-compose-$(uname -s)-$(uname -m)" -P /usr/local/bin/
+sudo mv /usr/local/bin/docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+# ------------------------------------------------------------------------ #
 
-## Instalando pacotes Snap ##
-sudo snap install spotify
-sudo snap install slack --classic
-sudo snap install skype --classic
-sudo snap install photogimp
+# ----------------------------- INSTALL STEP ----------------------------- #
+echo "==== Atualizando o APT depois da adição de novos repositórios ===="
+sudo apt update -y
+
+echo "==== Instalando programas no APT ===="
+for apt_program in ${PROGRAMS_VIA_APT[@]}; do
+  echo "[INSTALANDO VIA APT] - $apt_program"
+  sudo apt install "$apt_program" -y
+done
+
+echo "==== Download de programas .deb ===="
+mkdir "$TEMP_PROGRAMS_DIRECTORY"
+for url in ${URL_DEB_FILES[@]}; do
+  wget -c "$url" -P "$TEMP_PROGRAMS_DIRECTORY"
+done
+
+echo "==== Instalando pacotes .deb baixados ===="
+sudo dpkg -i $TEMP_PROGRAMS_DIRECTORY/*.deb
+sudo apt --fix-broken install -y
+# caso haja erro na primeira vez por conta de pacotes dependentes, ele roda novamente o comando
+sudo dpkg -i $TEMP_PROGRAMS_DIRECTORY/*.deb
+
+echo "==== Instalando pacotes Snap ===="
+sudo apt install snapd -y
+for snap_program in "${PROGRAMS_VIA_SNAP[@]}"; do
+  echo "[INSTALANDO VIA SNAP] - $snap_program"
+  sudo snap install $snap_program
+done
+
+echo "==== Configura docker para funcionar sem sudo ===="
+sudo groupadd docker
+sudo usermod -aG docker $USER
+sudo systemctl enable docker
+
+echo "==== Configura tema do zsh ===="
+curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -y
+
+echo "==== Personaliza GIMP ===="
+wget -c "https://github.com/Diolinux/PhotoGIMP/archive/master.zip" -P "$TEMP_PROGRAMS_DIRECTORY"
+unzip $TEMP_PROGRAMS_DIRECTORY/master.zip
+mv $HOME/.config/GIMP/2.10 $HOME/.config/GIMP/2.10bkp
+cp -r master/PhotoGIMP-master/.var/app/org.gimp.GIMP/config/GIMP/2.10 $HOME/.config/GIMP
+rm -rf master
+
+echo "==== Criando atalho para um arquivo em branco ===="
+mkdir $HOME/Templates
+touch $HOME/Templates/"blank file"
 # ---------------------------------------------------------------------- #
 
-# ----------------------------- PÓS-INSTALAÇÃO ----------------------------- #
-## Finalização, atualização e limpeza##
+# ----------------------------- CLEANING ------------------------------- #
+echo "==== Finalização, atualização e limpeza ===="
 sudo apt update && sudo apt dist-upgrade -y
-flatpak update
 sudo apt autoclean
 sudo apt autoremove -y
+sudo rm -rf $TEMP_PROGRAMS_DIRECTORY
 # ---------------------------------------------------------------------- #
+
+
+read -p "==== Quer configurar o SSH? s/n ====" shh
+if [ "$shh" == "s" ] || [ "$shh" == "S" ]; then
+  read -p "==== Qual seu email? ====" EMAIL
+  read -p "==== Qual seu nome? ====" NAME
+  git config --global user.name $NAME
+  git config --global user.name $EMAIL
+  ssh-keygen -t rsa -b 4096 -C $EMAIL
+  eval "$(ssh-agent -s)"
+  ssh-add ~/.ssh/id_rsa
+fi
+echo "Sua chave publica:"
+cat ~/.ssh/id_rsa.pub
+
+# ----------------------------- FINISH --------------------------------- #
+echo "==== PARA O DOCKER FUNCIONAR SEM O SUDO BASTA REINICIAR ===="
+
+read -p "REINICIAR AGORA? [s/n]: " opcao
+if [ "$opcao" == "s" ] || [ "$opcao" == "S" ]; then
+  sudo reboot
+fi
+
+exit 0 ---------------------------------------------------------------------- #
