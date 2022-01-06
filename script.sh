@@ -98,6 +98,7 @@ done
 echo "==== Configura docker para funcionar sem sudo ===="
 sudo groupadd docker
 sudo usermod -aG docker $USER
+newgrp docker
 sudo systemctl enable docker
 
 echo "==== Configura tema do zsh ===="
