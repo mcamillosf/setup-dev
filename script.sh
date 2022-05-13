@@ -12,20 +12,11 @@ URL_DEB_FILES=(
 
 # apt list
 PROGRAMS_VIA_APT=(
-  apt-transport-https
-  build-essential
   slack-desktop
   nodejs 
   nodejs-doc 
   zsh
-  net-tools
-  unrar
-  unzip
-  gparted
-  gnome-tweak-tool
   git
-  gimp
-  youtube-dl
   docker-ce 
   docker-ce-cli 
 )
@@ -48,6 +39,7 @@ echo "==== Adicionando/Confirmando arquitetura de 32 bits ===="
 sudo dpkg --add-architecture i386
 
 echo "==== Atualizando o repositório ===="
+sudo apt upgrade -y
 sudo apt update -y
 
 echo "==== Adicionando repositórios PPA ===="
@@ -68,6 +60,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 # ----------------------------- INSTALL STEP ----------------------------- #
 echo "==== Atualizando o APT depois da adição de novos repositórios ===="
+sudo apt upgrade -y
 sudo apt update -y
 
 echo "==== Instalando programas no APT ===="
@@ -103,13 +96,6 @@ sudo systemctl enable docker
 
 echo "==== Configura tema do zsh ===="
 curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -y
-
-echo "==== Personaliza GIMP ===="
-wget -c "https://github.com/Diolinux/PhotoGIMP/archive/master.zip" -P "$TEMP_PROGRAMS_DIRECTORY"
-unzip $TEMP_PROGRAMS_DIRECTORY/master.zip
-mv $HOME/.config/GIMP/2.10 $HOME/.config/GIMP/2.10bkp
-cp -r master/PhotoGIMP-master/.var/app/org.gimp.GIMP/config/GIMP/2.10 $HOME/.config/GIMP
-rm -rf master
 
 echo "==== Criando atalho para um arquivo em branco ===="
 mkdir $HOME/Templates
